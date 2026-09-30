@@ -9,8 +9,8 @@ window.addEventListener('error', function (e) {
 // ==========================================
 // CONFIGURACIÓN INICIAL
 // ==========================================
-const URL_CSV_DIRECTO = "https://raw.githubusercontent.com/Mirtasotelli/RUTA3/main/productos.csv?v=" + new Date().getTime(); 
-const MI_NUMERO_WHATSAPP = "5492235246285"; 
+const URL_CSV_DIRECTO = "https://raw.githubusercontent.com/Mirtasotelli/vandi/main/productos.csv?v=" + new Date().getTime(); 
+const MI_NUMERO_WHATSAPP = "5492235198553"; 
 
 // --- INTERRUPTOR DE PROMOCIÓN MAYORISTA ---
 const ACTIVAR_MAYORISTA = false; // true = Activado, false = Desactivado
