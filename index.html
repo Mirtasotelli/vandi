@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catálogo Online</title>
+
+    <!-- Fuente Inter de Google -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: { brand: '#0F172A', accent: '#10B981' }
+                }
+            }
+        }
+    </script>
+
+    <!-- PapaParse para CSV -->
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
+    <style>
+        /* Asegura visualización de imágenes */
+        #contenedor-productos img {
+            object-fit: contain !important;
+            max-height: 100% !important;
+            width: 100% !important;
+        }
+
+        #modal-imagen {
+            object-fit: contain !important;
+            max-height: 420px !important;
+        }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        @keyframes modalIn {
+            from { opacity: 0; transform: scale(0.95) translateY(10px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .animate-modal { animation: modalIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        
+        .hover-img {
+            transition: opacity 0.3s ease-in-out;
+        }
+        .hover-img:hover {
+            opacity: 0;
+        }
+
+        /* Estilos responsive para precios */
+        .precio-usd-grilla {
+            font-size: 0.875rem;
+            font-weight: 700;
+            color: #2563eb;
+        }
+
+        @media (min-width: 1024px) {
+            .precio-usd-grilla {
+                font-size: 1.125rem;
+            }
+        }
+
+        .precio-usd-modal {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #2563eb;
+        }
+
+        @media (min-width: 768px) {
+            .precio-usd-modal {
+                font-size: 1.25rem;
+            }
+        }
+
+        .precio-usd-carrito {
+            font-size: 0.875rem;
+            font-weight: 700;
+            color: #2563eb;
+        }
+
+        @media (min-width: 1024px) {
+            .precio-usd-carrito {
+                font-size: 1rem;
+            }
+        }
+
+        .total-usd-desktop {
+            font-size: 1.125rem;
+            font-weight: 700;
+            color: #2563eb;
+        }
+    </style>
+</head>
+<body class="bg-[#F8FAFC] text-slate-800 font-sans antialiased min-h-screen flex flex-col selection:bg-slate-900 selection:text-white pb-20 sm:pb-0 overflow-hidden">
+
+    <!-- CARTEL FLOTANTE DE BIENVENIDA -->
+    <div id="modal-bienvenida" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4 transition-all duration-300">
+        <div class="bg-slate-900 text-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-slate-800 relative overflow-hidden animate-modal text-center">
+            <!-- Luz decorativa de fondo -->
+            <div class="absolute -right-10 -bottom-10 w-40 h-40 bg-emerald-500/20 rounded-full blur-3xl pointer-events-none"></div>
+            
+            <span class="inline-block bg-emerald-500/20 text-emerald-400 text-[11px] font-black tracking-widest uppercase px-3.5 py-1 rounded-full border border-emerald-500/30 mb-4">
+                👋🏼 ¡Bienvenidos a nuestro Catálogo Digital!
+            </span>
+            
+            <h2 class="text-2xl sm:text-3xl font-black text-white leading-tight mb-3">
+                RUTA3.IMPORT
+            </h2>
+            
+            <p class="text-xs sm:text-sm text-slate-300 leading-relaxed mb-6">
+                Todos nuestros productos son nuevos, originales y en caja cerrada. Anexamos lineas premium en articulos seleccionados. Actualizamos nuestro stock permanentemente. Podés elegir lo que te guste y contactarnos directamente via WhatsApp. Si no encontras lo que buscas podes escribirnos y te lo conseguimos!
+            </p>
+
+            <div class="grid grid-cols-3 gap-2 mb-6 text-left text-[11px] text-slate-300">
+                <div class="bg-white/5 p-2.5 rounded-xl border border-white/10 text-center">
+                    <p class="text-base mb-1">💵</p>
+                    <p class="font-semibold">Precios en ARS/USD</p>
+                </div>
+                <div class="bg-white/5 p-2.5 rounded-xl border border-white/10 text-center">
+                    <p class="text-base mb-1">📦</p>
+                    <p class="font-semibold">Stock al día</p>
+                </div>
+                <div class="bg-white/5 p-2.5 rounded-xl border border-white/10 text-center">
+                    <p class="text-base mb-1">💬</p>
+                    <p class="font-semibold">Pedido vía WhatsApp</p>
+                </div>
+            </div>
+
+            <button onclick="cerrarBienvenida()" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black py-3.5 rounded-xl text-sm transition-all shadow-lg shadow-emerald-500/20 active:scale-95">
+                Ingresar al Catálogo
+            </button>
+        </div>
+    </div>
+
+    <!-- Header Glassmorphism -->
+    <header class="bg-white/90 backdrop-blur-md border-b border-slate-200/80 sticky top-0 z-40 transition-all">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 bg-slate-900 text-white flex items-center justify-center rounded-xl font-black text-lg shadow-sm">
+                    C
+                </div>
+                <div>
+                    <!-- El JS modificará este título -->
+                    <h1 id="titulo-principal" class="text-base sm:text-lg font-black tracking-tight text-slate-900 leading-none">CATÁLOGO</h1>
+                    <p class="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mt-0.5 flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Cotización Blue En Vivo
+                    </p>
+                </div>
+            </div>
+
+            <!-- Resumen flotante header móvil -->
+            <div onclick="document.getElementById('lista-carrito')?.scrollIntoView({ behavior: 'smooth', block: 'center' })" class="lg:hidden flex items-center gap-2 bg-slate-900 text-white px-3.5 py-1.5 rounded-full text-xs font-bold shadow-md cursor-pointer active:scale-95 transition-transform">
+                <span>🛒</span>
+                <span id="cant-items-mobile" class="bg-emerald-500 text-slate-950 px-1.5 py-0.2 rounded-full text-[10px]">0</span>
+                <span>$<span id="total-precio-mobile">0</span></span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Banner Mayorista Dinámico (Se oculta o muestra desde el JS) -->
+    <div id="banner-promocional" class="bg-slate-900 text-white border-b border-slate-800 py-3 px-4 hidden">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between text-center sm:text-left gap-2">
+            <div class="flex items-center gap-2">
+                <span class="bg-emerald-500/20 text-emerald-400 text-xs font-bold px-2.5 py-1 rounded-full border border-emerald-500/30">
+                    ⚡ PROMO MAYORISTA
+                </span>
+                <p class="text-xs sm:text-sm font-medium text-slate-300">
+                    Llevá <strong class="text-white" id="texto-cantidad-mayorista">5 o más unidades</strong> surtidas y accedé al precio al por mayor.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contenido Principal -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-grow">
+        
+        <div class="flex flex-col lg:flex-row gap-8">
+            
+            <!-- Productos y Filtros -->
+            <section class="w-full lg:w-2/3 xl:w-3/4">
+                <div class="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-slate-200/80 mb-6 space-y-4">
+                    <div class="relative">
+                        <input type="text" id="input-busqueda" placeholder="Buscar por nombre o producto..." class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/20 focus:bg-white transition-all">
+                        <svg class="w-4 h-4 absolute left-3.5 top-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    </div>
+                    <div id="contenedor-categorias" class="flex gap-2 overflow-x-auto no-scrollbar pb-1"></div>
+                </div>
+
+                <div id="contenedor-productos" class="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
+                    <div class="col-span-full py-16 text-center text-slate-400 font-medium">
+                        Cargando catálogo...
+                    </div>
+                </div>
+            </section>
+
+            <!-- Carrito de Compras -->
+            <aside class="w-full lg:w-1/3 xl:w-1/4">
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-5 sm:p-6 sticky top-20">
+                    <h2 class="text-base font-black text-slate-900 flex items-center justify-between mb-4 border-b pb-3">
+                        <span>🛒 Tu Pedido</span>
+                        <span id="badge-total-items" class="text-xs bg-slate-100 text-slate-700 font-bold px-2.5 py-1 rounded-full">0 items</span>
+                    </h2>
+
+                    <div id="aviso-mayorista" class="text-xs font-semibold text-slate-600 mb-4 bg-slate-50 p-3 rounded-xl border border-slate-200 text-center">
+                        Cargando...
+                    </div>
+
+                    <div id="lista-carrito" class="max-h-60 overflow-y-auto no-scrollbar mb-4 space-y-2.5 pr-1">
+                        <div class="py-8 text-center text-xs font-medium text-slate-400">
+                            El carrito está vacío
+                        </div>
+                    </div>
+
+                    <div class="flex justify-between items-end py-3 border-t border-slate-100 mb-5">
+                        <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Estimado</span>
+                        <div id="total-precio" class="text-right">
+                            <div class="text-2xl font-black text-slate-900">$0</div>
+                            <div class="total-usd-desktop">USD 0</div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2.5 mb-5">
+                        <input type="text" id="cliente-nombre" placeholder="Nombre y Apellido *" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-slate-900/20 focus:bg-white transition-all">
+                        <input type="text" id="cliente-direccion" placeholder="Dirección / Localidad *" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-slate-900/20 focus:bg-white transition-all">
+                        <input type="text" id="cliente-nota" placeholder="Notas adicionales (opcional)" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-slate-900/20 focus:bg-white transition-all">
+                    </div>
+
+                    <button onclick="enviarWhatsApp()" class="w-full bg-[#25D366] hover:bg-[#1EBE5A] text-white py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.272-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.67-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.076 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421-7.403h-.004a9.87 9.87 0 00-4.858 1.327l-.348-.179-3.611.738.751-2.742-.179-.285A9.879 9.879 0 0112.064 3.051c5.476 0 9.877 4.414 9.877 9.859 0 2.619-.963 5.02-2.567 6.885l-.196-.03c-.308-.062-.6-.169-.847-.326l-1.06-.215-.37.098-1.388 1.713c-.335.413-.84.645-1.374.645-.534 0-1.039-.232-1.374-.645l-1.388-1.713-.37-.098-1.06.215c-.247.157-.539.264-.847.326l-.196.03c-1.604-1.865-2.567-4.266-2.567-6.885 0-5.445 4.401-9.859 9.877-9.859z"/></svg>
+                        <span>Enviar Pedido por WhatsApp</span>
+                    </button>
+                </div>
+            </aside>
+
+        </div>
+    </main>
+
+    <!-- Modal Popup -->
+    <div id="modal-detalle" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm hidden p-4">
+        <div class="bg-white rounded-3xl max-w-md w-full max-h-[95vh] flex flex-col overflow-hidden shadow-2xl relative border border-slate-100 animate-modal">
+            
+            <button onclick="cerrarModal()" class="absolute top-3 right-3 z-10 bg-white/80 hover:bg-white backdrop-blur-md text-slate-600 w-8 h-8 rounded-full flex items-center justify-center font-bold hover:text-slate-900 transition-all">
+                ✕
+            </button>
+
+            <div class="overflow-y-auto flex-grow no-scrollbar pb-6">
+                <div class="relative bg-slate-100 h-64 w-full shrink-0">
+                    <img id="modal-imagen" src="" alt="" class="w-full h-full object-cover transition-opacity duration-300">
+                    <span id="modal-categoria" class="absolute bottom-3 left-3 bg-slate-900/80 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full backdrop-blur-md uppercase tracking-widest"></span>
+                </div>
+
+                <div id="modal-galeria" class="flex gap-2 p-4 overflow-x-auto no-scrollbar border-b border-slate-100"></div>
+
+                <div class="p-5 sm:p-6 pb-0">
+                    <div id="modal-stock-badge" class="mb-2"></div>
+                    <h3 id="modal-nombre" class="text-lg font-black text-slate-900 leading-snug mb-1"></h3>
+                    <p id="modal-descripcion" class="text-xs text-slate-500 mb-4 leading-relaxed"></p>
+
+                    <!-- Precios dinámicos inyectados por JS -->
+                    <div id="contenedor-precios-modal"></div>
+
+                    <!-- BOTONES PARA COMPARTIR PRODUCTO -->
+                    <div class="my-4 pt-3 border-t border-slate-100">
+                        <p class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-2">Compartir este producto:</p>
+                        <div class="flex items-center gap-2">
+                            <!-- WhatsApp -->
+                            <button onclick="compartirProducto('whatsapp')" title="Compartir en WhatsApp" class="flex-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 p-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all border border-emerald-200">
+                                <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12.012 2c-5.506 0-9.989 4.478-9.99 9.984 0 1.761.458 3.48 1.332 5.002l-1.416 5.176 5.298-1.389c1.469.802 3.128 1.224 4.773 1.225h.004c5.505 0 9.988-4.478 9.989-9.985 0-2.668-1.038-5.176-2.926-7.062a9.923 9.923 0 0 0-7.064-2.951z"/></svg>
+                                <span class="hidden sm:inline">WhatsApp</span>
+                            </button>
+                            
+                            <!-- Facebook -->
+                            <button onclick="compartirProducto('facebook')" title="Compartir en Facebook" class="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-700 p-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all border border-blue-200">
+                                <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                                <span class="hidden sm:inline">Facebook</span>
+                            </button>
+
+                            <!-- Instagram / Copiar Enlace -->
+                            <button onclick="compartirProducto('instagram')" title="Copiar enlace para Instagram" class="flex-1 bg-fuchsia-50 hover:bg-fuchsia-100 text-fuchsia-700 p-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all border border-fuchsia-200">
+                                <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+                                <span class="hidden sm:inline">Instagram</span>
+                            </button>
+                            
+                            <!-- Botón Nativo Compartir / Copiar Link -->
+                            <button onclick="compartirProducto('nativo')" title="Más opciones de compartir" class="bg-slate-100 hover:bg-slate-200 text-slate-700 p-2 rounded-xl text-xs font-bold transition-all border border-slate-200">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">Cantidad a pedir:</label>
+                        <div class="flex items-center gap-3">
+                            <div class="flex items-center border border-slate-200 rounded-xl bg-slate-50 p-1">
+                                <button type="button" onclick="cambiarCantidadModal(-1)" class="w-9 h-9 flex items-center justify-center font-black text-slate-700 hover:bg-white rounded-lg transition-all">−</button>
+                                <input type="number" id="modal-cantidad" value="1" min="1" oninput="validarCantidadInputModal(this)" class="w-12 text-center text-sm font-black text-slate-900 bg-transparent focus:outline-none">
+                                <button type="button" onclick="cambiarCantidadModal(1)" class="w-9 h-9 flex items-center justify-center font-black text-slate-700 hover:bg-white rounded-lg transition-all">+</button>
+                            </div>
+                            <div id="modal-btn-container" class="flex-grow"></div>
+                        </div>
+                    </div>
+                </div>
+            </div> 
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200/80 py-6 text-center text-xs text-slate-400">
+        <p>© Catálogo Online — Actualizado automáticamente</p>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>
